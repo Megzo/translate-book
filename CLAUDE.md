@@ -39,6 +39,7 @@ Verify: all output_chunk*.md files exist, manifest validation passes, output for
 - Subagent instructions in SKILL.md must be platform-neutral (work on Claude Code, OpenClaw, Codex)
 - README.md is the only README (Hungarian); README.zh-CN.md was intentionally removed
 - The glossary term-table header emitted by `scripts/glossary.py` (`Forrás | Aliasok | Fordítás`) must stay in sync with the wording referenced in SKILL.md rule #13
+- `SUMMARY.md` (per-temp-dir Hungarian translation brief, SKILL.md step 3.3) is advisory context only: skip-if-exists, hand-editable, intentionally NOT tracked by `run_state.py` — editing it must never trigger re-translation
 - Releases follow `.claude/commands/release.md` — three commands in order: `git push origin main`, `git tag vX.Y.Z && git push --tags`, `npx clawhub@latest publish ./ --version X.Y.Z`. Do not skip the git tag; it's the only version anchor in the repo
 
 ## Do not

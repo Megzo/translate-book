@@ -54,6 +54,28 @@ Glob: {filename}_temp/chunk*.md
 Exclude `output_chunk*.md` from the source list. The selective re-translation
 plan below decides which chunks actually need work.
 
+### 3.3. Generate Document Summary (translation brief)
+
+A separate sub-agent translates each chunk with a fresh context, so no sub-agent ever sees the whole document. `SUMMARY.md` is a short Hungarian-language translation brief injected into every sub-agent prompt, so every chunk is translated with the same understanding of what the document is, who it is for, and what register to use.
+
+If `<temp_dir>/SUMMARY.md` already exists, skip this step — re-running the skill must not overwrite a hand-edited summary. To force a rebuild, delete the file.
+
+Otherwise spawn ONE sub-agent (same mechanism as Step 4) with this task:
+
+> Read `<temp_dir>/input.md` and write `<temp_dir>/SUMMARY.md`: a translation brief written **in Hungarian**, at most ~1000 words, with exactly these sections:
+>
+> - **Mi ez a dokumentum** — műfaj/típus, téma, szerkezet néhány mondatban
+> - **Célközönség** — kinek szól
+> - **Hangnem és regiszter** — hangvétel, formalitás, és egy explicit tegezés/magázás döntés, amit a fordításnak követnie kell
+> - **Kulcsfogalmak és témák** — a fő fogalmak, amelyeket a fordítónak értenie kell
+> - **Szereplők és viszonyaik** — csak narratív műveknél: főszereplők, viszonyaik, beszédstílusuk; technikai dokumentumnál hagyd el ezt a szakaszt
+>
+> Output only the brief itself — no commentary, no translation of the source text.
+
+If `input.md` is too large to fit in one sub-agent context (roughly > 400 KB), instruct the sub-agent to read a sample instead — `chunk0001.md`, the last chunk, and 5 evenly-spaced middle chunks — and to note at the top of `SUMMARY.md` that it was built from samples.
+
+`SUMMARY.md` is advisory context only. It is NOT tracked by `run_state.py`, and editing it does not trigger re-translation of existing outputs (unlike glossary edits). If a register decision changes after a partial run (e.g. tegezés → magázás), delete the affected `output_chunk*.md` files or use a fresh temp dir.
+
 ### 3.5. Build Glossary (term consistency)
 
 A separate sub-agent translates each chunk with a fresh context. Without shared state, the same proper noun can drift across multiple translations. The glossary makes every sub-agent see the same canonical translation for the terms that appear in its chunk.
@@ -62,9 +84,10 @@ If `<temp_dir>/glossary.json` already exists, skip the rebuild — re-running th
 
 Otherwise:
 
-1. **Sample chunks**: read `chunk0001.md`, the last chunk, and 3 evenly-spaced middle chunks. If `chunk_count < 5`, sample all of them.
-2. **Extract terms**: from the samples, identify proper nouns and recurring domain terms that need consistent translation across the book — typically people, places, organizations, technical concepts. Translate each into Hungarian (keep the source form as target when Hungarian conventionally keeps it, e.g. most place and product names). Skip generic vocabulary that any translator would render the same way.
-3. **Write `glossary.json`** in the temp dir, matching this v2 schema:
+1. **Read the brief**: if `<temp_dir>/SUMMARY.md` exists, read it first — it informs category and target choices below.
+2. **Sample chunks**: read `chunk0001.md`, the last chunk, and 3 evenly-spaced middle chunks. If `chunk_count < 5`, sample all of them.
+3. **Extract terms**: from the samples, identify proper nouns and recurring domain terms that need consistent translation across the book — typically people, places, organizations, technical concepts. Translate each into Hungarian (keep the source form as target when Hungarian conventionally keeps it, e.g. most place and product names). Skip generic vocabulary that any translator would render the same way.
+4. **Write `glossary.json`** in the temp dir, matching this v2 schema:
 
    ```json
    {
@@ -82,7 +105,7 @@ Otherwise:
 
    Existing v1 `glossary.json` files are auto-upgraded to v2 on first load. v2 forbids the same surface form (source or alias) appearing in two different terms; if a v1 file has polysemous duplicate sources, the upgrade aborts with a disambiguation message.
 
-4. **Count frequencies** by running:
+5. **Count frequencies** by running:
 
    ```bash
    python3 {baseDir}/scripts/glossary.py count-frequencies "<temp_dir>"
@@ -143,6 +166,7 @@ Each sub-agent receives:
 - The temp directory path
 - The translation prompt (see below)
 - A per-chunk term table (see "Term table assembly" below)
+- The document summary brief (see "Summary assembly" below)
 - Read-only neighboring chunk excerpts (see "Neighbor context assembly" below)
 - Any custom instructions
 
@@ -153,6 +177,8 @@ python3 {baseDir}/scripts/glossary.py print-terms-for-chunk "<temp_dir>" "chunk<
 ```
 
 Capture stdout. The CLI emits a 3-column markdown table (`Forrás | Aliasok | Fordítás`) of every term that either appears in this chunk (by source OR any alias) OR is in the top-N most-frequent terms book-wide. Inject the table as `{TERM_TABLE}` in rule #13 of the translation prompt. **If stdout is empty (no glossary, or no relevant terms), omit rule #13 from this chunk's prompt entirely** — do not leave a dangling `{TERM_TABLE}` placeholder.
+
+**Summary assembly** — read `<temp_dir>/SUMMARY.md` once; its content is identical for every chunk. Inject it as `{DOCUMENT_SUMMARY}` in the translation prompt below. If the file does not exist or is empty, omit the document-summary block entirely — do not leave a dangling `{DOCUMENT_SUMMARY}` placeholder.
 
 **Neighbor context assembly** — before spawning a sub-agent, run:
 
@@ -263,6 +289,10 @@ FONTOS KÖVETELMÉNYEK:
 13. Terminológiai következetesség: az alábbi kifejezéseket kötelező pontosan a megadott fordítással használni, ne térj el tőlük. Ha a táblázat „Forrás" oszlopában **vagy az „Aliasok" oszlopában** szereplő bármely alak előfordul a szövegben, mindig a „Fordítás" oszlop szerinti alakra kell fordítani.
 
 {TERM_TABLE}
+
+Dokumentum-összefoglaló (csak olvasásra — ne fordítsd le, ne másold az outputba; kizárólag a hangnem, a regiszter, a tegezés/magázás és a fogalmi kontextus eldöntéséhez használd; ha üres, hagyd figyelmen kívül):
+
+{DOCUMENT_SUMMARY}
 
 Szomszédos chunk-részletek (csak olvasásra — ne fordítsd le, ne másold az outputba; kizárólag a névmások, nyelvtani nemek, aliasok és chunkokon átívelő utalások feloldásához használd; ha üres, hagyd figyelmen kívül):
 

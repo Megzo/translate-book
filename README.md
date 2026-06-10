@@ -122,6 +122,13 @@ A Calibre HTMLZ-be konvertálja a bemenetet, ami kicsomagolás után Markdownná
 
 Alapértelmezetten a munkakönyvtár a `{book_name}_temp/` az aktuális könyvtár alatt. A `--temp-root /path/to/work` kapcsolóval ugyanez a könyvtárnév egy másik szülő alá kerül.
 
+### 1.3. lépés: SUMMARY.md (fordítási brief)
+
+Minden chunkot friss kontextusú subagent fordít, így egyik sem látja a teljes dokumentumot. Ezért a fordítás előtt egy dedikált subagent elkészíti a `<temp_dir>/SUMMARY.md` fájlt: egy rövid (legfeljebb ~1000 szavas), magyar nyelvű fordítási briefet, amely rögzíti, hogy mi a dokumentum, kinek szól, milyen hangnemben és regiszterben íródott (explicit tegezés/magázás döntéssel), melyek a kulcsfogalmai, narratív műnél pedig kik a szereplők és milyen viszonyban állnak. Ez a brief minden subagent promptjába bekerül csak olvasható kontextusként.
+
+- A meglévő `SUMMARY.md` soha nem íródik felül — kézzel szerkeszthető (pl. te döntöd el a tegezés/magázás kérdést); az újrageneráláshoz töröld a fájlt.
+- A `SUMMARY.md` csak tájékoztató kontextus: a `run_state.py` nem követi, a szerkesztése nem vált ki újrafordítást (a glossary-szerkesztéssel ellentétben). Ha futás közben változtatsz rajta regiszter-döntést, töröld kézzel az érintett `output_chunk*.md` fájlokat, vagy használj friss temp-könyvtárat.
+
 ### 1.5. lépés: Glossary (terminológiai következetesség a chunkok között)
 
 Minden chunkot friss kontextusú subagent fordít, ezért egy 100 chunkos könyvben ugyanaz a tulajdonnév többféleképpen is lefordulhatna. Ezt előzi meg a fordítás előtt felépített glossary:
@@ -156,7 +163,7 @@ A skill batch-ekben indítja a subagenteket (alapértelmezés: 8 párhuzamosan).
 
 1. Beolvas egy forrás-chunkot (pl. `chunk0042.md`)
 2. Lefordítja magyarra
-3. Per-chunk terminustáblázatot és rövid, csak olvasható előző/következő részleteket használ
+3. Per-chunk terminustáblázatot, a `SUMMARY.md` fordítási briefet és rövid, csak olvasható előző/következő részleteket használ
 4. Az eredményt az `output_chunk0042.md` fájlba írja
 5. Megfigyeléseit az `output_chunk0042.meta.json` fájlba írja a glossary-visszacsatoláshoz
 
