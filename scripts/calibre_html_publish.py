@@ -72,31 +72,15 @@ def extract_html_metadata(html_file):
 
 def _get_font_family_for_lang(lang):
     """Get appropriate font family CSS for the given language."""
-    lang_lower = lang.lower()
-    if lang_lower.startswith('zh'):
-        return '"FangSong", "FangSong_GB2312", "仿宋", "仿宋_GB2312", "STFangSong", "SimSun", serif'
-    elif lang_lower.startswith('ja'):
-        return '"Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif'
-    elif lang_lower.startswith('ko'):
-        return '"Nanum Myeongjo", "Batang", serif'
-    else:
-        return 'Georgia, "Times New Roman", Times, serif'
+    return 'Georgia, "Times New Roman", Times, serif'
 
 
 def _get_pdf_font_for_lang(lang):
     """Get PDF font name for the given language."""
-    lang_lower = lang.lower()
-    if lang_lower.startswith('zh'):
-        return 'FangSong'
-    elif lang_lower.startswith('ja'):
-        return 'Hiragino Mincho ProN'
-    elif lang_lower.startswith('ko'):
-        return 'Nanum Myeongjo'
-    else:
-        return 'Georgia'
+    return 'Georgia'
 
 
-def prepare_html_for_conversion(input_html, temp_dir, lang="zh-CN"):
+def prepare_html_for_conversion(input_html, temp_dir, lang="hu"):
     """Prepare HTML file for conversion with font styling"""
 
     # Create working copy
@@ -211,7 +195,7 @@ def get_output_format(output_file):
     }
     return format_map.get(ext)
 
-def convert_html_with_calibre(html_file, output_file, format_type, timeout=600, lang="zh-CN", cover=None):
+def convert_html_with_calibre(html_file, output_file, format_type, timeout=600, lang="hu", cover=None):
     """Convert HTML to specified format using Calibre with timeout protection"""
     
     calibre_path = find_calibre_convert()
@@ -303,8 +287,8 @@ def main():
     parser.add_argument('-o', '--output', required=True, help='Output file (.docx, .epub, or .pdf)')
     parser.add_argument('-t', '--timeout', type=int, default=600,
                        help='Conversion timeout in seconds (default: 600)')
-    parser.add_argument('--lang', default='zh-CN',
-                       help='Language code for output metadata (default: zh-CN)')
+    parser.add_argument('--lang', default='hu',
+                       help='Language code for output metadata (default: hu)')
     parser.add_argument('--cover', default=None,
                        help='Cover image path for EPUB output')
     
@@ -404,7 +388,7 @@ def main():
                 file_size = os.path.getsize(final_output)
                 print(f"💾 Size: {file_size:,} bytes")
             print(f"🖼️  Images: {image_count} files")
-            print("🔤 Font: 仿宋体 (FangSong)")
+            print(f"🔤 Font: {_get_pdf_font_for_lang(args.lang)}")
         else:
             print(f"\n❌ Conversion to {format_type.upper()} failed!")
             sys.exit(1)

@@ -28,7 +28,7 @@
             text-align: justify;
         }
 
-        /* 浮动目录按钮 */
+        /* Floating TOC button */
         .toc-toggle {
             position: fixed;
             left: 20px;
@@ -52,7 +52,7 @@
             transform: translateY(-50%) scale(1.1);
         }
 
-        /* 浮动目录面板 */
+        /* Floating TOC panel */
         .toc-sidebar {
             position: fixed;
             left: -320px;
@@ -81,12 +81,12 @@
             padding-bottom: 0.5rem;
         }
 
-        /* 目录区域 - 用于插入目录内容 */
+        /* TOC area - TOC content is inserted here */
         .toc-content {
-            /* 目录内容将插入到这里 */
+            /* TOC content will be inserted here */
         }
 
-        /* 遮罩层 */
+        /* Overlay mask */
         .toc-overlay {
             position: fixed;
             top: 0;
@@ -105,7 +105,7 @@
             visibility: visible;
         }
 
-        /* 简洁的目录样式 */
+        /* Simple TOC styling */
         .simple-toc ul {
             list-style: none;
             padding-left: 0;
@@ -138,7 +138,7 @@
             transform: translateX(4px);
         }
 
-        /* 标题样式 */
+        /* Heading styles */
         h1, h2, h3, h4, h5, h6 {
             font-family: $body_font$;
             color: #2d3748;
@@ -185,7 +185,7 @@
             font-weight: normal;
         }
 
-        /* 段落样式 */
+        /* Paragraph styles */
         p {
             margin-bottom: 1.5rem;
             text-align: justify;
@@ -194,7 +194,7 @@
             font-family: $body_font$;
         }
 
-        /* 链接样式 */
+        /* Link styles */
         a {
             color: #3182ce;
             text-decoration: none;
@@ -206,7 +206,7 @@
             text-decoration: underline;
         }
 
-        /* 图片样式 - 居中显示 */
+        /* Image styles - centered */
         img {
             max-width: 100%;
             height: auto;
@@ -216,7 +216,7 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        /* 列表样式 */
+        /* List styles */
         ul, ol {
             margin: 1.25rem 0;
             padding-left: 2rem;
@@ -230,7 +230,7 @@
             margin: 0.5rem 0;
         }
 
-        /* 代码样式 */
+        /* Code styles */
         code {
             font-family: 'Courier New', 'Monaco', 'Consolas', 'Ubuntu Mono', monospace;
             background-color: #f8f9fa;
@@ -260,7 +260,7 @@
             font-size: inherit;
         }
 
-        /* 引用样式 */
+        /* Blockquote styles */
         blockquote {
             border-left: 4px solid #a0aec0;
             margin: 2rem 0;
@@ -276,7 +276,7 @@
             margin-bottom: 0;
         }
 
-        /* 表格样式 */
+        /* Table styles */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -303,14 +303,14 @@
             background-color: #f7fafc;
         }
 
-        /* 分隔线 */
+        /* Horizontal rule */
         hr {
             border: none;
             border-top: 2px solid #e2e8f0;
             margin: 3rem 0;
         }
 
-        /* 页面分隔器 */
+        /* Page separator */
         .page-separator {
             border-top: 2px solid #e2e8f0;
             margin: 3rem 0;
@@ -327,7 +327,7 @@
             top: -0.75rem;
         }
 
-        /* 强调样式 */
+        /* Emphasis styles */
         strong, b {
             font-weight: 700;
             color: #1a202c;
@@ -338,7 +338,7 @@
             color: #4a5568;
         }
 
-        /* 目标标题高亮 */
+        /* Target heading highlight */
         h1:target, h2:target, h3:target, h4:target, h5:target, h6:target {
             background-color: #fff3cd;
             padding: 1rem;
@@ -359,7 +359,7 @@
             }
         }
 
-        /* 响应式设计 */
+        /* Responsive design */
         @media (max-width: 768px) {
             body {
                 padding: 1.5rem;
@@ -439,7 +439,7 @@
             }
         }
 
-        /* 打印样式 */
+        /* Print styles */
         @media print {
             .toc-toggle,
             .toc-sidebar,
@@ -476,23 +476,23 @@
     </style>
 </head>
 <body>
-    <!-- 浮动目录按钮 -->
-    <button class="toc-toggle" onclick="toggleToc()" title="打开/关闭目录">
+    <!-- Floating TOC button -->
+    <button class="toc-toggle" onclick="toggleToc()" title="Tartalomjegyzék megnyitása/bezárása">
         ☰
     </button>
 
-    <!-- 浮动目录面板 -->
+    <!-- Floating TOC panel -->
     <div class="toc-sidebar" id="tocSidebar">
         <h3>$toc_label$</h3>
         <div class="toc-content simple-toc">
-            <!-- 目录内容将插入到这里 -->
+            <!-- TOC content will be inserted here -->
         </div>
     </div>
 
-    <!-- 遮罩层 -->
+    <!-- Overlay mask -->
     <div class="toc-overlay" id="tocOverlay" onclick="closeToc()"></div>
 
-    <!-- 主要内容 -->
+    <!-- Main content -->
     $body$
 
     <script>
@@ -525,14 +525,14 @@
             document.body.style.overflow = 'auto';
         }
 
-        // ESC键关闭目录
+        // Close TOC with the ESC key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeToc();
             }
         });
 
-        // 点击目录链接后自动关闭目录（移动端）
+        // Auto-close TOC after clicking a TOC link (mobile)
         document.addEventListener('click', function(e) {
             if (e.target.matches('.simple-toc a') && window.innerWidth <= 768) {
                 setTimeout(closeToc, 300);

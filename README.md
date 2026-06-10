@@ -1,165 +1,143 @@
-# Rainman Translate Book
+# Translate Book — magyar fordító skill
 
-English | [中文](README.zh-CN.md)
+Claude Code skill, amely teljes könyveket és dokumentumokat (PDF/DOCX/EPUB) fordít **bármilyen nyelvről magyarra**, párhuzamos subagentekkel.
 
-Claude Code skill that translates entire books (PDF/DOCX/EPUB) into any language using parallel subagents.
-
-> Inspired by [claude_translater](https://github.com/wizlijun/claude_translater). The original project uses shell scripts as its entry point, coordinating the Claude CLI with multiple step scripts to perform chunked translation. This project restructures the workflow as a Claude Code Skill, using subagents to translate chunks in parallel, with manifest-driven integrity checks, resumable runs, and multi-format output unified into a single pipeline. As the project structure and implementation differ significantly from the original, this is an independent project rather than a fork.
+> Ez a [deusyu/translate-book](https://github.com/deusyu/translate-book) magyarított forkja. Az eredeti projekt tetszőleges célnyelvet támogatott; ez a változat fixen magyar célnyelvre fordít, és az összes nyelvspecifikus (kínai) prompt-tartalom magyarra/angolra lett cserélve. Az eredeti projektet a [claude_translater](https://github.com/wizlijun/claude_translater) inspirálta.
 
 ---
 
-## How It Works
+## Hogyan működik
 
 ```
-Input (PDF/DOCX/EPUB)
+Bemenet (PDF/DOCX/EPUB)
   │
   ▼
 Calibre ebook-convert → HTMLZ → HTML → Markdown
   │
   ▼
-Split into chunks (chunk0001.md, chunk0002.md, ...)
-  │  manifest.json tracks chunk hashes
+Darabolás chunkokra (chunk0001.md, chunk0002.md, ...)
+  │  a manifest.json követi a chunkok hash-eit
   ▼
-Parallel subagents (8 concurrent by default)
-  │  each subagent: read 1 chunk → translate → write output_chunk*.md
-  │  batched to respect API rate limits
+Párhuzamos subagentek (alapértelmezetten 8 egyszerre)
+  │  minden subagent: 1 chunk beolvasása → fordítás → output_chunk*.md
+  │  batch-ekben, az API rate limitek tiszteletben tartásával
   ▼
-Validate (manifest hash check, 1:1 source↔output match)
+Validálás (manifest hash-ellenőrzés, 1:1 forrás↔kimenet megfeleltetés)
   │
   ▼
-Merge → Pandoc → HTML (with TOC) → Calibre → DOCX / EPUB / PDF
+Összefűzés → Pandoc → HTML (tartalomjegyzékkel) → Calibre → DOCX / EPUB / PDF
 ```
 
-Each chunk gets its own independent subagent with a fresh context window. This prevents context accumulation and output truncation that happen when translating a full book in a single session.
+Minden chunk saját, független subagentet kap friss kontextusablakkal. Ez megakadályozza a kontextus felhalmozódását és a kimenet csonkolódását, ami egyetlen munkamenetben fordított teljes könyvnél elkerülhetetlen lenne.
 
-## Features
+## Funkciók
 
-- **Parallel subagents** — 8 concurrent translators per batch, each with isolated context
-- **Resumable + selective re-translation** — chunk-level resume, with `run_state.json` tracking glossary-sensitive re-translation
-- **Neighbor context** — each chunk can see short read-only excerpts from adjacent chunks for pronoun and entity resolution
-- **Manifest validation** — SHA-256 hash tracking prevents stale or corrupt outputs from being merged
-- **Multi-format output** — HTML (with floating TOC), DOCX, EPUB, PDF
-- **Optional output controls** — explicit EPUB cover, custom temp root, and user-facing export aliases
-- **Multi-language** — zh, en, ja, ko, fr, de, es (extensible)
-- **PDF/DOCX/EPUB input** — Calibre handles the conversion heavy lifting
+- **Párhuzamos subagentek** — batch-enként 8 párhuzamos fordító, mindegyik izolált kontextussal
+- **Folytatható + szelektív újrafordítás** — chunk-szintű folytatás; a `run_state.json` követi, hogy glossary-változás után mely chunkokat kell újrafordítani
+- **Szomszéd-kontextus** — minden chunk rövid, csak olvasható részleteket lát a szomszédos chunkokból a névmás- és entitásfeloldáshoz
+- **Manifest-validálás** — SHA-256 hash-követés akadályozza meg, hogy elavult vagy sérült kimenet kerüljön az összefűzésbe
+- **Többformátumú kimenet** — HTML (lebegő tartalomjegyzékkel), DOCX, EPUB, PDF
+- **Opcionális kimeneti beállítások** — explicit EPUB-borító, egyedi temp-könyvtár, felhasználóbarát exportnevek
+- **Magyar célnyelv** — bármilyen forrásnyelvről magyarra fordít
+- **PDF/DOCX/EPUB bemenet** — a konverzió nehezét a Calibre végzi
 
-## Prerequisites
+## Előfeltételek
 
-- **Claude Code CLI** — installed and authenticated
-- **Calibre** — `ebook-convert` command must be available ([download](https://calibre-ebook.com/))
-- **Pandoc** — for HTML↔Markdown conversion ([download](https://pandoc.org/))
-- **Python 3** with:
-  - `pypandoc` — required (`pip install pypandoc`)
-  - `beautifulsoup4` — optional, for better TOC generation (`pip install beautifulsoup4`)
+- **Claude Code CLI** — telepítve és bejelentkezve
+- **Calibre** — az `ebook-convert` parancsnak elérhetőnek kell lennie ([letöltés](https://calibre-ebook.com/))
+- **Pandoc** — a HTML↔Markdown konverzióhoz ([letöltés](https://pandoc.org/))
+- **Python 3** az alábbiakkal:
+  - `pypandoc` — kötelező (`pip install pypandoc`)
+  - `beautifulsoup4` — opcionális, jobb tartalomjegyzék-generáláshoz (`pip install beautifulsoup4`)
 
-## Quick Start
+## Gyors kezdés
 
-### 1. Install the skill
+### 1. A skill telepítése
 
-**Option A: npx (recommended)**
+**A lehetőség: npx**
 
 ```bash
-npx skills add deusyu/translate-book -a claude-code -g
+npx skills add Megzo/translate-book -a claude-code -g
 ```
 
-**Option B: ClawHub**
+**B lehetőség: Git clone**
 
 ```bash
-clawhub install translate-book
+git clone https://github.com/Megzo/translate-book.git ~/.claude/skills/translate-book
 ```
 
-**Option C: Git clone**
+### 2. Könyv fordítása
 
-```bash
-git clone https://github.com/deusyu/translate-book.git ~/.claude/skills/translate-book
-```
-
-
-### 2. Translate a book
-
-In Claude Code, say:
+A Claude Code-ban írd be:
 
 ```
-translate /path/to/book.pdf to Chinese
+fordítsd le magyarra: /path/to/book.pdf
 ```
 
-Or use the slash command:
+Vagy használd a slash parancsot:
 
 ```
-/translate-book translate /path/to/book.pdf to Japanese
+/translate-book fordítsd le /path/to/book.pdf
 ```
 
-The skill handles the full pipeline automatically — convert, chunk, translate in parallel, validate, merge, and build all output formats.
+A skill automatikusan végigviszi a teljes pipeline-t — konvertálás, darabolás, párhuzamos fordítás, validálás, összefűzés és az összes kimeneti formátum legenerálása.
 
-### 3. Find your outputs
+### 3. A kimenetek helye
 
-All files are in `{book_name}_temp/`:
+Minden fájl a `{book_name}_temp/` könyvtárban van:
 
-| File | Description |
-|------|-------------|
-| `output.md` | Merged translated Markdown |
-| `book.html` | Web version with floating TOC |
-| `book.docx` | Word document |
-| `book.epub` | E-book |
-| `book.pdf` | Print-ready PDF |
+| Fájl | Leírás |
+|------|--------|
+| `output.md` | Összefűzött, lefordított Markdown |
+| `book.html` | Webes verzió lebegő tartalomjegyzékkel |
+| `book.docx` | Word-dokumentum |
+| `book.epub` | E-könyv |
+| `book.pdf` | Nyomtatásra kész PDF |
 
-## Repository Test Assets
+## Teszt-assetek a repóban
 
-- Checked-in baseline inputs live under `tests/baselines/<book-id>/`.
-- Generated full-pipeline outputs live under `tests/.artifacts/` and should not be committed.
-- Because `scripts/convert.py` writes `{book_name}_temp/` under the current working directory, run repository baseline tests from inside `tests/.artifacts/` to keep generated files out of the repo root.
+- A verziókövetett baseline bemenetek a `tests/baselines/<book-id>/` alatt találhatók.
+- A generált teljes-pipeline kimenetek a `tests/.artifacts/` alá kerülnek, és nem szabad commitolni őket.
+- Mivel a `scripts/convert.py` a `{book_name}_temp/` könyvtárat az aktuális munkakönyvtár alá írja, a baseline-teszteket a `tests/.artifacts/` könyvtárból futtasd, hogy a generált fájlok ne a repo gyökerébe kerüljenek.
 
-### Full-Pipeline Baseline Example
+### Teljes-pipeline baseline példa
 
 ```bash
 mkdir -p tests/.artifacts
 cd tests/.artifacts
-python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub --olang zh
-# then run translation via the skill
-python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title "test"
+python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub
+# ezután a fordítás a skillen keresztül fut
+python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title "teszt"
 ```
 
-## Feedback and Contributions
+## A pipeline részletei
 
-Please open a detailed GitHub issue instead of starting with a pull request. This project is maintained as an AI-assisted skill pipeline, and changes need to be evaluated against the current orchestration rules, chunk/manifest contracts, baseline assets, and release flow in one maintainer-owned context.
-
-Pull requests are not the preferred contribution path and may be closed in favor of an issue. If you already have a patch, include the idea, key diff, failing case, or verification notes in the issue; the maintainer may rework or split the implementation before merging.
-
-A useful issue should include:
-
-- Current behavior and expected behavior
-- Input format and environment, such as PDF/DOCX/EPUB, OS, Python, Calibre, and Pandoc versions
-- Minimal reproduction steps or a small public-domain sample when possible
-- Logs, screenshots, or generated file names that show the failure
-
-## Pipeline Details
-
-### Step 1: Convert
+### 1. lépés: Konvertálás
 
 ```bash
-python3 scripts/convert.py /path/to/book.pdf --olang zh
+python3 scripts/convert.py /path/to/book.pdf
 ```
 
-Calibre converts the input to HTMLZ, which is extracted and converted to Markdown, then split into chunks (~6000 chars each). A `manifest.json` records the SHA-256 hash of each source chunk for later validation.
+A Calibre HTMLZ-be konvertálja a bemenetet, ami kicsomagolás után Markdownná alakul, majd ~6000 karakteres chunkokra darabolódik. A `manifest.json` minden forrás-chunk SHA-256 hash-ét rögzíti a későbbi validáláshoz. A célnyelv alapértelmezetten magyar (`--olang hu`).
 
-By default the working directory is `{book_name}_temp/` under the current directory. Use `--temp-root /path/to/work` to keep the same leaf directory name under a different parent.
+Alapértelmezetten a munkakönyvtár a `{book_name}_temp/` az aktuális könyvtár alatt. A `--temp-root /path/to/work` kapcsolóval ugyanez a könyvtárnév egy másik szülő alá kerül.
 
-### Step 1.5: Glossary (term consistency across chunks)
+### 1.5. lépés: Glossary (terminológiai következetesség a chunkok között)
 
-Each chunk is translated by a fresh-context sub-agent, which means the same proper noun can drift across multiple translations on a 100-chunk book. To fix this, the skill builds a glossary before translation:
+Minden chunkot friss kontextusú subagent fordít, ezért egy 100 chunkos könyvben ugyanaz a tulajdonnév többféleképpen is lefordulhatna. Ezt előzi meg a fordítás előtt felépített glossary:
 
-1. Sample 5 chunks (first, last, 3 evenly-spaced middle).
-2. Extract proper nouns and recurring domain terms; pick canonical translations.
-3. Write `<temp_dir>/glossary.json` (hand-editable schema below).
-4. Run `python3 scripts/glossary.py count-frequencies <temp_dir>` to populate per-term frequencies (ASCII terms use word-boundary regex so `cat` doesn't match `category`; CJK terms use substring; single-CJK-char terms are rejected; aliases count toward the term they belong to).
-5. For each chunk, the orchestrator calls `python3 scripts/glossary.py print-terms-for-chunk <temp_dir> chunkNNNN.md` and injects the resulting 3-column (`原文 | 别名 | 译文`) markdown table into that chunk's prompt as a hard constraint. Term selection = (terms whose source OR any alias appears in this chunk) ∪ (top-N most-frequent book-wide).
+1. 5 chunk mintavételezése (első, utolsó, 3 egyenletesen elosztott középső).
+2. Tulajdonnevek és visszatérő szakkifejezések kigyűjtése; kanonikus magyar fordítások kiválasztása.
+3. A `<temp_dir>/glossary.json` megírása (kézzel szerkeszthető, séma lentebb).
+4. `python3 scripts/glossary.py count-frequencies <temp_dir>` futtatása a kifejezések gyakoriságának meghatározásához (az ASCII kifejezések szóhatár-figyelő regexszel számolódnak, így a `cat` nem találja meg a `category`-t; a CJK kifejezések substringként; az egykarakteres CJK alakok kizárva; az aliasok a saját kifejezésükhöz számítanak).
+5. Minden chunkhoz az orchestrátor lefuttatja a `python3 scripts/glossary.py print-terms-for-chunk <temp_dir> chunkNNNN.md` parancsot, és az így kapott 3 oszlopos (`Forrás | Aliasok | Fordítás`) markdown táblázatot kemény megkötésként beinjektálja a chunk promptjába. A kiválasztás = (kifejezések, amelyek forrása VAGY bármely aliasa előfordul a chunkban) ∪ (a könyv egészében leggyakoribb top-N).
 
 ```json
 {
   "version": 2,
   "terms": [
-    {"id": "Manhattan", "source": "Manhattan", "target": "曼哈顿",
-     "category": "place", "aliases": [], "gender": "unknown",
+    {"id": "Mr. Fox", "source": "Mr. Fox", "target": "Róka úr",
+     "category": "person", "aliases": [], "gender": "male",
      "confidence": "medium", "frequency": 12,
      "evidence_refs": [], "notes": ""}
   ],
@@ -168,128 +146,89 @@ Each chunk is translated by a fresh-context sub-agent, which means the same prop
 }
 ```
 
-Existing v1 `glossary.json` files are auto-upgraded to v2 on first load. v2 forbids the same surface form (source or alias) appearing in two different terms; if a v1 file has polysemous duplicate sources, the upgrade aborts with a disambiguation message — fix the file by hand and reload.
+A meglévő v1-es `glossary.json` fájlok az első betöltéskor automatikusan v2-re frissülnek. A v2 tiltja, hogy ugyanaz a felszíni alak (forrás vagy alias) két különböző kifejezéshez tartozzon; ha egy v1-es fájlban poliszém duplikált források vannak, a frissítés egyértelműsítést kérő üzenettel leáll — javítsd kézzel a fájlt, és töltsd be újra.
 
-Edit `glossary.json` between runs to fix translations; existing `glossary.json` is never overwritten — delete it to rebuild from scratch. `scripts/run_state.py` records which glossary terms each chunk used, so later glossary changes only re-translate affected chunks after the state has been recorded.
+Futtatások között a `glossary.json` szerkesztésével javíthatod a fordításokat; a meglévő `glossary.json` soha nem íródik felül — a nulláról építéshez töröld a fájlt. A `scripts/run_state.py` rögzíti, hogy az egyes chunkok mely glossary-kifejezéseket használták, így a későbbi glossary-változások csak az érintett chunkokat fordíttatják újra.
 
-### Step 2: Translate (parallel subagents)
+### 2. lépés: Fordítás (párhuzamos subagentek)
 
-The skill launches subagents in batches (default: 8 concurrent). Each subagent:
+A skill batch-ekben indítja a subagenteket (alapértelmezés: 8 párhuzamosan). Minden subagent:
 
-1. Reads one source chunk (e.g. `chunk0042.md`)
-2. Translates to the target language
-3. Uses a per-chunk term table and short read-only previous/next excerpts
-4. Writes the result to `output_chunk0042.md`
-5. Writes `output_chunk0042.meta.json` observations for glossary feedback
+1. Beolvas egy forrás-chunkot (pl. `chunk0042.md`)
+2. Lefordítja magyarra
+3. Per-chunk terminustáblázatot és rövid, csak olvasható előző/következő részleteket használ
+4. Az eredményt az `output_chunk0042.md` fájlba írja
+5. Megfigyeléseit az `output_chunk0042.meta.json` fájlba írja a glossary-visszacsatoláshoz
 
-Before launching subagents, `scripts/run_state.py plan <temp_dir>` decides which chunks need translation, which existing outputs only need state recording, and which are unchanged. Use `--retranslate-untracked` only when adopting an old temp dir whose existing outputs should be forced through the current glossary. If a run is interrupted, re-running skips chunks that already have valid output files and current state. Failed chunks are retried once automatically.
+A subagentek indítása előtt a `scripts/run_state.py plan <temp_dir>` eldönti, mely chunkokat kell fordítani, mely meglévő kimeneteknek kell csak állapotrögzítés, és melyek változatlanok. A `--retranslate-untracked` kapcsolót csak akkor használd, ha egy régi temp-könyvtár meglévő kimeneteit akarod a jelenlegi glossary-n átfuttatni. Megszakadt futás után az újrafutás kihagyja a már érvényes kimenettel és aktuális állapottal rendelkező chunkokat. A sikertelen chunkok automatikusan egyszer újrapróbálódnak.
 
-### Step 3: Merge & Build
-
-```bash
-python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》"
-```
-
-Optional output flags:
+### 3. lépés: Összefűzés és buildelés
 
 ```bash
-python3 scripts/merge_and_build.py --temp-dir book_temp --title "《translated title》" --cover cover.jpg --export-name "translated-title"
+python3 scripts/merge_and_build.py --temp-dir book_temp --title "A lefordított cím"
 ```
 
-`--cover` passes an explicit image to the EPUB Calibre step. `--export-name` creates alias copies such as `translated-title.epub` while preserving the canonical `book.*` pipeline artifacts.
+Opcionális kimeneti kapcsolók:
 
-Before merging, the script validates:
-- Every source chunk has a corresponding output file (1:1 match)
-- Source chunk hashes match the manifest (no stale outputs)
-- No output files are empty
+```bash
+python3 scripts/merge_and_build.py --temp-dir book_temp --title "A lefordított cím" --cover cover.jpg --export-name "leforditott-cim"
+```
 
-Then: merge → Pandoc HTML → inject TOC → Calibre generates DOCX, EPUB, PDF.
+A `--cover` explicit képet ad át az EPUB Calibre-lépésnek. A `--export-name` alias-másolatokat készít (pl. `leforditott-cim.epub`), miközben a kanonikus `book.*` pipeline-artefaktumok megmaradnak.
 
-**Note:** `{book_name}_temp/` is a working directory for a single translation run. If you change the title, author, output language, template, or image assets, either use a fresh temp directory or delete the existing final artifacts (`output.md`, `book*.html`, `book.docx`, `book.epub`, `book.pdf`) before re-running.
+Összefűzés előtt a szkript validálja, hogy:
+- Minden forrás-chunkhoz tartozik kimeneti fájl (1:1 megfeleltetés)
+- A forrás-chunkok hash-ei egyeznek a manifestben rögzítettekkel (nincs elavult kimenet)
+- Egyetlen kimeneti fájl sem üres
 
-## Project Structure
+Ezután: összefűzés → Pandoc HTML → tartalomjegyzék beszúrása → a Calibre legenerálja a DOCX, EPUB és PDF formátumokat.
 
-| File | Purpose |
+**Megjegyzés:** a `{book_name}_temp/` egyetlen fordítási futás munkakönyvtára. Ha megváltoztatod a címet, a szerzőt, a sablont vagy a képeket, használj friss temp-könyvtárat, vagy töröld a meglévő végső artefaktumokat (`output.md`, `book*.html`, `book.docx`, `book.epub`, `book.pdf`) az újrafuttatás előtt.
+
+## Projektstruktúra
+
+| Fájl | Funkció |
 |------|---------|
-| `SKILL.md` | Claude Code skill definition — orchestrates the full pipeline |
-| `scripts/convert.py` | PDF/DOCX/EPUB → Markdown chunks via Calibre HTMLZ |
-| `scripts/manifest.py` | Chunk manifest: SHA-256 tracking and merge validation |
-| `scripts/glossary.py` | Glossary management: per-chunk term tables for consistent terminology |
-| `scripts/chunk_context.py` | Read-only previous/next chunk excerpts for sub-agent prompts |
-| `scripts/meta.py` | Per-chunk sub-agent observation file schema (`output_chunkNNNN.meta.json`) |
-| `scripts/merge_meta.py` | Batch-boundary merge: sub-agent observations → canonical glossary |
-| `scripts/run_state.py` | Selective re-translation planner and `run_state.json` recorder |
-| `scripts/merge_and_build.py` | Merge chunks → HTML → DOCX/EPUB/PDF |
-| `scripts/calibre_html_publish.py` | Calibre wrapper for format conversion |
-| `scripts/template.html` | Web HTML template with floating TOC |
-| `scripts/template_ebook.html` | Ebook HTML template |
-| `tests/baselines/` | Checked-in baseline book inputs for full-pipeline testing |
-| `tests/.artifacts/` | Ignored full-pipeline test outputs |
+| `SKILL.md` | A Claude Code skill definíciója — a teljes pipeline orchestrációja |
+| `scripts/convert.py` | PDF/DOCX/EPUB → Markdown chunkok Calibre HTMLZ-n keresztül |
+| `scripts/manifest.py` | Chunk-manifest: SHA-256 követés és merge-validálás |
+| `scripts/glossary.py` | Glossary-kezelés: per-chunk terminustáblázatok a következetes terminológiához |
+| `scripts/chunk_context.py` | Csak olvasható előző/következő chunk-részletek a subagent-promptokhoz |
+| `scripts/meta.py` | Per-chunk subagent-megfigyelési fájl sémája (`output_chunkNNNN.meta.json`) |
+| `scripts/merge_meta.py` | Batch-határos merge: subagent-megfigyelések → kanonikus glossary |
+| `scripts/run_state.py` | Szelektív újrafordítás-tervező és `run_state.json`-rögzítő |
+| `scripts/merge_and_build.py` | Chunkok összefűzése → HTML → DOCX/EPUB/PDF |
+| `scripts/calibre_html_publish.py` | Calibre-wrapper a formátumkonverzióhoz |
+| `scripts/template.html` | Webes HTML-sablon lebegő tartalomjegyzékkel |
+| `scripts/template_ebook.html` | E-könyv HTML-sablon |
+| `tests/baselines/` | Verziókövetett baseline könyvbemenetek a teljes-pipeline tesztekhez |
+| `tests/.artifacts/` | Git által ignorált teljes-pipeline tesztkimenetek |
 
-## Troubleshooting
+## Hibaelhárítás
 
-| Problem | Solution |
-|---------|----------|
-| `Calibre ebook-convert not found` | Install Calibre and ensure `ebook-convert` is in PATH |
-| `Manifest validation failed` | Source chunks changed since splitting — re-run `convert.py` |
-| `Missing source chunk` | Source file deleted — re-run `convert.py` to regenerate |
-| Incomplete translation | Re-run the skill — it resumes from where it stopped |
-| Changed title/template/assets but output didn't update | Delete existing `output.md`, `book*.html`, `book.docx`, `book.epub`, `book.pdf` from the temp dir, then re-run `merge_and_build.py` |
-| Want page-number footers stripped from PDF output | By default, monotonic page-number sequences (e.g. `1, 2, 3, ...`) are auto-detected and dropped while outliers like years (`1984`), chapter numbers, and citation indices stay preserved. If detection misses your case, pass `--strip-page-numbers` to `convert.py` to aggressively delete every standalone-digit line. The flag aborts if a cached `input.md` or `chunk*.md` already exists — delete them first so the flag actually takes effect. |
-| `output.md exists but manifest invalid` | Stale output — the script auto-deletes and re-merges |
-| `Glossary upgrade rejected: duplicate source` | v2 disallows two terms sharing a source/alias surface form. Edit `glossary.json` to disambiguate (e.g., rename one source from `Apple` to `Apple (Inc.)`) and reload. |
-| PDF generation fails | Ensure Calibre is installed with PDF output support |
+| Probléma | Megoldás |
+|----------|----------|
+| `Calibre ebook-convert not found` | Telepítsd a Calibre-t, és gondoskodj róla, hogy az `ebook-convert` a PATH-on legyen |
+| `Manifest validation failed` | A forrás-chunkok megváltoztak a darabolás óta — futtasd újra a `convert.py`-t |
+| `Missing source chunk` | A forrásfájl törlődött — futtasd újra a `convert.py`-t |
+| Hiányos fordítás | Futtasd újra a skillt — onnan folytatja, ahol abbamaradt |
+| Cím/sablon/assetek változtak, de a kimenet nem frissült | Töröld a temp-könyvtárból a meglévő `output.md`, `book*.html`, `book.docx`, `book.epub`, `book.pdf` fájlokat, majd futtasd újra a `merge_and_build.py`-t |
+| Oldalszám-lábléceket akarsz kiszedni a PDF-ből | Alapértelmezetten a monoton oldalszám-sorozatok (pl. `1, 2, 3, ...`) automatikusan felismerésre és törlésre kerülnek, miközben az olyan kivételek, mint az évszámok (`1984`), fejezetszámok és hivatkozási indexek megmaradnak. Ha a felismerés nem kapja el a te esetedet, add át a `--strip-page-numbers` kapcsolót a `convert.py`-nak, ami agresszívan töröl minden önálló számjegysort. A kapcsoló leáll, ha már létezik cache-elt `input.md` vagy `chunk*.md` — ezeket előbb töröld, hogy a kapcsoló tényleg érvényesüljön. |
+| `output.md exists but manifest invalid` | Elavult kimenet — a szkript automatikusan törli és újra összefűz |
+| `Glossary upgrade rejected: duplicate source` | A v2 nem engedi, hogy két kifejezés ugyanazon forrás/alias alakon osztozzon. Szerkeszd a `glossary.json`-t az egyértelműsítéshez (pl. nevezd át az egyik forrást `Apple`-ről `Apple (Inc.)`-re), és töltsd be újra. |
+| A PDF-generálás meghiúsul | Győződj meg róla, hogy a Calibre PDF-kimenet támogatással van telepítve |
 
-## Roadmap
+## Tervezési elvek
 
-Tracking [issue #7](https://github.com/deusyu/translate-book/issues/7) — name/term inconsistency and pronoun/gender errors across chunks. The pipeline now covers high-frequency entities, alias/spelling drift, adjacent-chunk pronoun context, and selective re-translation after glossary changes. Full-book organic validation remains a future quality pass. The plan is four independently shippable phases.
+- **A szkriptek könyvelnek; a szemantikus merge az LLM dolga.** Állapot, sémák, deduplikáció, hashelés, IO — determinisztikus Python. Elnevezés, nyelvtani nem megállapítása, alias-megítélés, konfliktusfeloldás — LLM-hívások.
+- **Egyetlen író a megosztott állapothoz.** Csak a fő agent írja a `glossary.json`-t és a `run_state.json`-t; a subagentek per-chunk meta fájlokat írnak. Nem kell zárolás.
+- **Konzervatív merge.** Új entitáshoz bizonyíték kell; az alias-összevonáshoz LLM-ítélet, nem csak string-hasonlóság; a nyelvtani nem `unknown`-ról indul, és csak explicit bizonyíték alapján változik; konfliktus esetén a kanonikus értékek nem íródnak felül csendben.
+- **Háromrétegű állapot, három külön fájl.** `glossary.json` (kanonikus, a subagentek olvassák), `output_chunkNNNN.meta.json` (nyers per-chunk megfigyelések), `run_state.json` (orchestráció).
 
-### Design principles
+## Visszajelzés
 
-- **Scripts do bookkeeping; LLMs do semantic merge.** State, schemas, dedup, hashing, IO are deterministic Python. Naming, gender attribution, alias judgment, conflict resolution are LLM calls.
-- **Single writer for shared state.** Only the main agent writes `glossary.json` and `run_state.json`; sub-agents write per-chunk meta files. No locking needed.
-- **Conservative merge.** New entities require evidence; alias merges need LLM judgment, not just string similarity; gender starts at `unknown` and only moves up under explicit evidence; canonical values aren't silently overwritten on conflict.
-- **Three-layer state, three separate files.** `glossary.json` (canonical, sub-agents read), `output_chunkNNNN.meta.json` (raw per-chunk observations), `run_state.json` (orchestration).
+Az upstream projekt fejlesztési előzményei és roadmapje a [deusyu/translate-book](https://github.com/deusyu/translate-book) repóban találhatók. Ezzel a magyar forkkal kapcsolatos hibákat a [Megzo/translate-book](https://github.com/Megzo/translate-book/issues) issue-iban jelezd.
 
-### Phase 1 — Sub-agent feedback + glossary merge (shipped)
-
-Closes the read+write loop. Glossary v2 adds `id`, `aliases`, `gender`, `confidence`, `evidence_refs`, `notes` (v1 files auto-upgrade on first load; the term table is now 3-col and aliases participate in selection). Sub-agents emit `output_chunkNNNN.meta.json` alongside each translated chunk. `scripts/merge_meta.py` (`prepare-merge` / `apply-merge` / `status`) merges per-batch with conservative rules: surface-form uniqueness enforced, malformed metas quarantined (warn + skip + count), confidence escalation via both `evidence_chunks` and `used_term_sources`, FIFO-cap at 5. See SKILL.md Step 4 / Step 4.5 / Step 5.
-
-### Phase 2 — Neighbor context for pronouns (shipped)
-
-`scripts/chunk_context.py` injects `prev_excerpt` (last ~300 chars of previous chunk) and `next_excerpt` (first ~300 chars of next chunk) into each sub-agent prompt as read-only context. No new state files are introduced.
-
-### Phase 3 — Selective re-translation (shipped)
-
-Phase 1's batch feedback only improves *forward*. Selective rerun closes the *backward* loop with `scripts/run_state.py` and `run_state.json`: per-chunk tracking of `glossary_version_used`, `entity_ids_used`, `output_hash`, source hash, and selected entity hashes; five planning rules cover missing/empty output, manifest source drift, untracked outputs, source drift since record, and glossary term selection/hash changes.
-
-### Phase 4 — Bootstrap warm-up (experimental, gated on Phase 1 data)
-
-Phase 1 grows the glossary batch-by-batch, so the first batch sees the smallest glossary and has the highest drift risk. Possible approaches: sequential bootstrap, variable concurrency, or skip entirely. Decision belongs to whoever has run the system on real books.
-
-> Phase 4 remains gated on real-book evidence. The shipped schemas can still evolve under compatibility-aware migrations if production runs expose gaps.
-
-### Parallel track — Pipeline / UX backlog (partly shipped, separate from issue #7)
-
-Recent PR discussions also surfaced several useful workflow improvements, but these are broader than one-off patches and touch repo contracts (artifact names, temp-dir behavior, cleanup semantics, or EPUB compatibility scope). Current status:
-
-- **Explicit EPUB cover support (shipped).** `merge_and_build.py --cover <image>` passes the image through the HTML -> EPUB Calibre step. `--cover-from <epub>` / EPUB cover auto-extraction remains out of scope until the project is ready to own EPUB parsing compatibility across different package layouts. (context: closed #3)
-- **Configurable temp workspace location (shipped).** `convert.py --temp-root <dir>` keeps the default cwd-local `{book_name}_temp/` behavior unless explicitly overridden. (context: closed #4)
-- **Safer Calibre/Pandoc artifact cleanup (partly shipped).** Page-number and Calibre-marker cleanup is regression-tested, preserving years, chapter numbers, and non-monotonic standalone numbers. Continue improving cleanup incrementally under tests. (context: closed #5)
-- **Optional user-facing export names (shipped).** `merge_and_build.py --export-name <stem>` creates alias copies while preserving canonical pipeline artifacts as `book.html`, `book_doc.html`, `book.docx`, `book.epub`, and `book.pdf`. (context: closed #6)
-
-## Star History
-
-If you find this project helpful, please consider giving it a Star ⭐!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=deusyu/translate-book&type=Date)](https://star-history.com/#deusyu/translate-book&Date)
-
-## Sponsor
-
-If this project saves you time, consider sponsoring to keep it maintained and improved.
-
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/deusyu)
-
-## License
+## Licenc
 
 [MIT](LICENSE)

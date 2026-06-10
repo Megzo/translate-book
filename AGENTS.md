@@ -2,7 +2,7 @@
 
 ## Project
 
-translate-book is a Codex Skill that translates books (PDF/DOCX/EPUB) into any language using parallel subagents. Published on ClawHub as `translate-book` and on GitHub as `deusyu/translate-book`.
+translate-book is a Codex Skill that translates books (PDF/DOCX/EPUB) from any language into Hungarian using parallel subagents. This is a Hungarianized fork of `deusyu/translate-book`, on GitHub as `Megzo/translate-book`.
 
 ## Structure
 
@@ -25,7 +25,7 @@ Use a small file for quick checks, or the checked-in baseline book for the repos
 Quick smoke test:
 
 ```bash
-python3 scripts/convert.py /path/to/small.pdf --olang zh
+python3 scripts/convert.py /path/to/small.pdf
 # then run translation via the skill
 python3 scripts/merge_and_build.py --temp-dir <name>_temp --title "test"
 ```
@@ -35,7 +35,7 @@ Full baseline test:
 ```bash
 mkdir -p tests/.artifacts
 cd tests/.artifacts
-python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub --olang zh
+python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub
 # then run translation via the skill
 python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title "test"
 ```
@@ -49,7 +49,7 @@ Verify: all output_chunk*.md files exist, manifest validation passes, output for
 - Script paths in SKILL.md use `{baseDir}` not hardcoded paths
 - Subagent instructions in SKILL.md must be platform-neutral (work on Codex, OpenClaw, Codex)
 - Checked-in baseline inputs live under `tests/baselines/<book-id>/`; generated full-pipeline outputs live under `tests/.artifacts/`
-- README changes must be synced to both README.md and README.zh-CN.md
+- README.md is the only README (Hungarian); README.zh-CN.md was intentionally removed
 - Releases follow `.claude/commands/release.md` — three commands in order: `git push origin main`, `git tag vX.Y.Z && git push --tags`, `npx clawhub@latest publish ./ --version X.Y.Z`. Do not skip the git tag; it's the only version anchor in the repo
 
 ## Do not
@@ -65,7 +65,7 @@ Verify: all output_chunk*.md files exist, manifest validation passes, output for
 
 - Python 3.12+ is pre-installed; no version manager needed.
 - System dependencies (Calibre, Pandoc) and pip packages (pypandoc, beautifulsoup4) are installed by the update script.
-- Unit tests only依赖 Python stdlib（不需要 pip 包或外部二进制，直接 `python3 -m unittest discover` 即可运行）。
+- Unit tests only rely on the Python stdlib (no pip packages or external binaries needed — `python3 -m unittest discover` runs directly).
 
 ### Running tests
 
@@ -78,7 +78,7 @@ Run from `tests/.artifacts/` to keep generated files out of the repo root:
 
 ```bash
 mkdir -p tests/.artifacts && cd tests/.artifacts
-python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub --olang zh
+python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub
 # Create mock output_chunk*.md files (copy source chunks) since actual translation requires LLM subagents
 for f in standard-alice_temp/chunk*.md; do cp "$f" "standard-alice_temp/output_$(basename $f)"; done
 python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title "test"

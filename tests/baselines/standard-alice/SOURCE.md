@@ -11,7 +11,7 @@ Run the repository baseline test from `tests/.artifacts/` so generated files sta
 ```bash
 mkdir -p tests/.artifacts
 cd tests/.artifacts
-python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub --olang zh
+python3 ../../scripts/convert.py ../baselines/standard-alice/standard-alice.epub
 # then run translation via the skill
 python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title "爱丽丝梦游仙境（Baseline Test）"
 ```

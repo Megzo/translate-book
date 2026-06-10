@@ -14,8 +14,8 @@ The schema (v2):
     {
       "version": 2,
       "terms": [
-        {"id": "Manhattan", "source": "Manhattan", "target": "曼哈顿",
-         "category": "place", "aliases": [], "gender": "unknown",
+        {"id": "Mr. Fox", "source": "Mr. Fox", "target": "Róka úr",
+         "category": "person", "aliases": [], "gender": "male",
          "confidence": "medium", "frequency": 12,
          "evidence_refs": [], "notes": ""}
       ],
@@ -499,15 +499,15 @@ def select_terms_for_chunk(glossary, chunk_text, top_n=None, max_terms=DEFAULT_M
 
 
 def format_terms_for_prompt(terms):
-    """Render a 3-col markdown table: 原文 | 别名 | 译文.
+    """Render a 3-col markdown table: Forrás | Aliasok | Fordítás.
 
     Empty input yields empty string so the caller can omit the rule line
-    entirely. The 别名 column is empty for terms without aliases. Pipes in
+    entirely. The Aliasok column is empty for terms without aliases. Pipes in
     any field escape to \\|.
     """
     if not terms:
         return ''
-    rows = ['| 原文 | 别名 | 译文 |', '|------|------|------|']
+    rows = ['| Forrás | Aliasok | Fordítás |', '|--------|---------|----------|']
     for t in terms:
         source = t.get('source', '').replace('|', '\\|')
         aliases = t.get('aliases', []) or []

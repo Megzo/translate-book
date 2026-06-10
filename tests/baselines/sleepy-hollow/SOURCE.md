@@ -12,7 +12,7 @@ Run from `tests/.artifacts/` so generated files stay out of the repo root:
 ```bash
 mkdir -p tests/.artifacts
 cd tests/.artifacts
-python3 ../../scripts/convert.py ../baselines/sleepy-hollow/sleepy-hollow.epub --olang zh
+python3 ../../scripts/convert.py ../baselines/sleepy-hollow/sleepy-hollow.epub
 # then run translation via the skill
 python3 ../../scripts/merge_and_build.py --temp-dir sleepy-hollow_temp --title "睡谷传奇（Smoke Baseline）"
 ```

@@ -189,53 +189,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # =============================================================================
 
 LANG_CONFIG = {
-    'zh': {
-        'lang_attr': 'zh-CN',
-        'font_family': "'FangSong', '仿宋', 'STFangSong', '华文仿宋', serif",
-        'font_family_ebook': '"FangSong", "FangSong_GB2312", "仿宋", "仿宋_GB2312", "STFangSong", "SimSun", serif',
-        'toc_label': '目录',
-        'pdf_font': 'FangSong',
-    },
-    'en': {
-        'lang_attr': 'en',
+    'hu': {
+        'lang_attr': 'hu',
         'font_family': "Georgia, 'Times New Roman', Times, serif",
         'font_family_ebook': 'Georgia, "Times New Roman", Times, serif',
-        'toc_label': 'Contents',
-        'pdf_font': 'Georgia',
-    },
-    'ja': {
-        'lang_attr': 'ja',
-        'font_family': "'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', serif",
-        'font_family_ebook': '"Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif',
-        'toc_label': '目次',
-        'pdf_font': 'Hiragino Mincho ProN',
-    },
-    'ko': {
-        'lang_attr': 'ko',
-        'font_family': "'Nanum Myeongjo', 'Batang', serif",
-        'font_family_ebook': '"Nanum Myeongjo", "Batang", serif',
-        'toc_label': '목차',
-        'pdf_font': 'Nanum Myeongjo',
-    },
-    'fr': {
-        'lang_attr': 'fr',
-        'font_family': "Georgia, 'Times New Roman', Times, serif",
-        'font_family_ebook': 'Georgia, "Times New Roman", Times, serif',
-        'toc_label': 'Table des matières',
-        'pdf_font': 'Georgia',
-    },
-    'de': {
-        'lang_attr': 'de',
-        'font_family': "Georgia, 'Times New Roman', Times, serif",
-        'font_family_ebook': 'Georgia, "Times New Roman", Times, serif',
-        'toc_label': 'Inhaltsverzeichnis',
-        'pdf_font': 'Georgia',
-    },
-    'es': {
-        'lang_attr': 'es',
-        'font_family': "Georgia, 'Times New Roman', Times, serif",
-        'font_family_ebook': 'Georgia, "Times New Roman", Times, serif',
-        'toc_label': 'Índice',
+        'toc_label': 'Tartalomjegyzék',
         'pdf_font': 'Georgia',
     },
 }
@@ -1045,7 +1003,7 @@ def main():
     # Load config as base, CLI args override
     config = load_config(temp_dir)
 
-    lang_code = args.lang or config.get('output_lang', 'zh')
+    lang_code = args.lang or config.get('output_lang', 'hu')
     lang_cfg = get_lang_config(lang_code)
 
     title = args.title or config.get('original_title', 'Translated Book')

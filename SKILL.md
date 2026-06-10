@@ -1,13 +1,13 @@
 ---
 name: translate-book
-description: Translate books (PDF/DOCX/EPUB) into any language using parallel sub-agents. Converts input -> Markdown chunks -> translated chunks -> HTML/DOCX/EPUB/PDF.
+description: Translate books (PDF/DOCX/EPUB) from any language into Hungarian using parallel sub-agents. Converts input -> Markdown chunks -> translated chunks -> HTML/DOCX/EPUB/PDF.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
-metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"anyBins":["calibre","ebook-convert"]},"homepage":"https://github.com/deusyu/translate-book"}}
+metadata: {"openclaw":{"requires":{"bins":["python3","pandoc","ebook-convert"],"anyBins":["calibre","ebook-convert"]},"homepage":"https://github.com/Megzo/translate-book"}}
 ---
 
 # Book Translation Skill
 
-You are a book translation assistant. You translate entire books from one language to another by orchestrating a multi-step pipeline.
+You are a book translation assistant. You translate entire books from any language into Hungarian by orchestrating a multi-step pipeline.
 
 ## Workflow
 
@@ -15,7 +15,6 @@ You are a book translation assistant. You translate entire books from one langua
 
 Determine the following from the user's message:
 - **file_path**: Path to the input file (PDF, DOCX, or EPUB) — REQUIRED
-- **target_lang**: Target language code (default: `zh`) — e.g. zh, en, ja, ko, fr, de, es
 - **concurrency**: Number of parallel sub-agents per batch (default: `8`)
 - **temp_root**: Optional directory under which `{filename}_temp/` should be created
 - **epub_cover**: Optional explicit cover image path for EPUB output
@@ -28,8 +27,10 @@ If the file path is not provided, ask the user.
 
 Run the conversion script to produce chunks:
 
+The target language is always Hungarian (`hu`, the script default):
+
 ```bash
-python3 {baseDir}/scripts/convert.py "<file_path>" --olang "<target_lang>"
+python3 {baseDir}/scripts/convert.py "<file_path>"
 ```
 
 If the user provided `temp_root`, add `--temp-root "<temp_root>"`. The temp
@@ -62,15 +63,15 @@ If `<temp_dir>/glossary.json` already exists, skip the rebuild — re-running th
 Otherwise:
 
 1. **Sample chunks**: read `chunk0001.md`, the last chunk, and 3 evenly-spaced middle chunks. If `chunk_count < 5`, sample all of them.
-2. **Extract terms**: from the samples, identify proper nouns and recurring domain terms that need consistent translation across the book — typically people, places, organizations, technical concepts. Translate each into the target language. Skip generic vocabulary that any translator would render the same way.
+2. **Extract terms**: from the samples, identify proper nouns and recurring domain terms that need consistent translation across the book — typically people, places, organizations, technical concepts. Translate each into Hungarian (keep the source form as target when Hungarian conventionally keeps it, e.g. most place and product names). Skip generic vocabulary that any translator would render the same way.
 3. **Write `glossary.json`** in the temp dir, matching this v2 schema:
 
    ```json
    {
      "version": 2,
      "terms": [
-       {"id": "Manhattan", "source": "Manhattan", "target": "曼哈顿",
-        "category": "place", "aliases": [], "gender": "unknown",
+       {"id": "Mr. Fox", "source": "Mr. Fox", "target": "Róka úr",
+        "category": "person", "aliases": [], "gender": "male",
         "confidence": "medium", "frequency": 0,
         "evidence_refs": [], "notes": ""}
      ],
@@ -135,12 +136,11 @@ Launch chunks in batches to respect API rate limits:
 
 The output file is `output_` prefixed to the source filename: `chunk0001.md` → `output_chunk0001.md`.
 
-> Translate the file `<temp_dir>/chunk<NNNN>.md` to {TARGET_LANGUAGE} and write the result to `<temp_dir>/output_chunk<NNNN>.md`. Follow the translation rules below. Output only the translated content — no commentary.
+> Translate the file `<temp_dir>/chunk<NNNN>.md` to Hungarian and write the result to `<temp_dir>/output_chunk<NNNN>.md`. Follow the translation rules below. Output only the translated content — no commentary.
 
 Each sub-agent receives:
 - The single chunk file it is responsible for
 - The temp directory path
-- The target language
 - The translation prompt (see below)
 - A per-chunk term table (see "Term table assembly" below)
 - Read-only neighboring chunk excerpts (see "Neighbor context assembly" below)
@@ -152,7 +152,7 @@ Each sub-agent receives:
 python3 {baseDir}/scripts/glossary.py print-terms-for-chunk "<temp_dir>" "chunk<NNNN>.md"
 ```
 
-Capture stdout. The CLI emits a 3-column markdown table (`原文 | 别名 | 译文`) of every term that either appears in this chunk (by source OR any alias) OR is in the top-N most-frequent terms book-wide. Inject the table as `{TERM_TABLE}` in rule #13 of the translation prompt. **If stdout is empty (no glossary, or no relevant terms), omit rule #13 from this chunk's prompt entirely** — do not leave a dangling `{TERM_TABLE}` placeholder.
+Capture stdout. The CLI emits a 3-column markdown table (`Forrás | Aliasok | Fordítás`) of every term that either appears in this chunk (by source OR any alias) OR is in the top-N most-frequent terms book-wide. Inject the table as `{TERM_TABLE}` in rule #13 of the translation prompt. **If stdout is empty (no glossary, or no relevant terms), omit rule #13 from this chunk's prompt entirely** — do not leave a dangling `{TERM_TABLE}` placeholder.
 
 **Neighbor context assembly** — before spawning a sub-agent, run:
 
@@ -179,21 +179,21 @@ for pronoun, gender, and entity-resolution context.
 {
   "schema_version": 1,
   "new_entities": [
-    {"source": "Taig", "target_proposal": "泰格", "category": "person",
+    {"source": "Mrs. Badger", "target_proposal": "Borzné", "category": "person",
      "evidence": "<≤200-char quote from the chunk>"}
   ],
   "alias_hypotheses": [
-    {"variant": "Taig", "may_be_alias_of_source": "Tai",
+    {"variant": "Mrs. B.", "may_be_alias_of_source": "Mrs. Badger",
      "evidence": "<≤200-char quote>"}
   ],
   "attribute_hypotheses": [
-    {"entity_source": "Tai", "attribute": "gender", "value": "male",
+    {"entity_source": "Mr. Fox", "attribute": "gender", "value": "male",
      "confidence": "high", "evidence": "<≤200-char quote>"}
   ],
-  "used_term_sources": ["Tai", "Manhattan"],
+  "used_term_sources": ["Mr. Fox", "Manhattan"],
   "conflicts": [
-    {"entity_source": "Tai", "field": "target", "injected": "泰",
-     "observed_better": "太一", "evidence": "<≤200-char quote>"}
+    {"entity_source": "Mr. Fox", "field": "target", "injected": "Róka úr",
+     "observed_better": "Fox úr", "evidence": "<≤200-char quote>"}
   ]
 }
 ```
@@ -206,69 +206,69 @@ The meta file is read by the main agent later and merged into `glossary.json` (s
 
 #### Translation Prompt for Sub-Agents
 
-Include this translation prompt in each sub-agent's instructions (replace `{TARGET_LANGUAGE}` with the actual language name, e.g. "Chinese"):
+Include this translation prompt in each sub-agent's instructions (the prompt itself is in Hungarian — the target language):
 
 ---
 
-请翻译markdown文件为 {TARGET_LANGUAGE}.
-IMPORTANT REQUIREMENTS:
-1. 严格保持 Markdown 格式不变，包括标题、链接、图片引用等
-2. 仅翻译文字内容，保留所有 Markdown 语法和文件名
-3. 删除空链接、不必要的字符和如: 行末的'\\'。页码已由 convert.py 上游处理，不要再删除独立的数字行（可能是年份 1984、章节编号、引用编号等正文内容）。
-4. 保证格式和语义准确翻译内容自然流畅
-5. 只输出翻译后的正文内容，不要有任何说明、提示、注释或对话内容。
-6. 表达清晰简洁，不要使用复杂的句式。请严格按顺序翻译，不要跳过任何内容。
-7. 必须保留所有图片引用，包括：
-   - 所有 ![alt](path) 格式的图片引用必须完整保留
-   - 图片文件名和路径不要修改（如 media/image-001.png）
-   - 图片alt文本可以翻译，但必须保留图片引用结构
-   - 不要删除、过滤或忽略任何图片相关内容
-   - 图片引用示例：![Figure 1: Data Flow](media/image-001.png) -> ![图1：数据流](media/image-001.png)
-   - **原始 HTML 标签（如 `<img alt="..." />`、`<a title="...">`）必须保持合法**：翻译 `alt`、`title` 等属性值内部文本时，下列字符会破坏 HTML 结构，必须替换为安全形式（仅适用于**原始 HTML 标签的属性值内部**；普通 Markdown 正文、代码块、URL 不要主动转义）：
+Fordítsd le a markdown fájlt magyarra.
+FONTOS KÖVETELMÉNYEK:
+1. Szigorúan őrizd meg a Markdown formátumot, beleértve a címsorokat, linkeket és képhivatkozásokat.
+2. Csak a szöveges tartalmat fordítsd le; minden Markdown szintaxist és fájlnevet hagyj változatlanul.
+3. Töröld az üres linkeket és a fölösleges karaktereket, például a sorvégi '\\' jeleket. Az oldalszámokat a convert.py már korábban eltávolította — önálló számsorokat NE törölj (lehetnek évszámok, pl. 1984, fejezetszámok vagy hivatkozási számok, vagyis valódi tartalom).
+4. A fordítás legyen formailag és tartalmilag pontos, természetes és gördülékeny magyar szöveg.
+5. Csak a lefordított szöveget add ki — semmilyen magyarázat, megjegyzés, kommentár vagy párbeszéd ne kerüljön az outputba.
+6. Fogalmazz világosan és tömören, kerüld a túlbonyolított mondatszerkezeteket. Szigorúan sorrendben fordíts, semmit ne hagyj ki.
+7. Minden képhivatkozást kötelező megőrizni:
+   - Minden ![alt](útvonal) formátumú képhivatkozást teljes egészében meg kell tartani.
+   - A képek fájlnevét és útvonalát ne módosítsd (pl. media/image-001.png).
+   - A kép alt szövege lefordítható, de a képhivatkozás szerkezetének érintetlennek kell maradnia.
+   - Semmilyen képpel kapcsolatos tartalmat ne törölj, ne szűrj ki és ne hagyj figyelmen kívül.
+   - Példa képhivatkozásra: ![Figure 1: Data Flow](media/image-001.png) -> ![1. ábra: Adatfolyam](media/image-001.png)
+   - **A nyers HTML tagek (pl. `<img alt="..." />`, `<a title="...">`) kötelezően érvényesek maradjanak**: amikor az `alt`, `title` és hasonló attribútumértékek belső szövegét fordítod, az alábbi karakterek tönkretennék a HTML szerkezetet, ezért biztonságos formára kell cserélni őket (ez **kizárólag a nyers HTML tagek attribútumértékeinek belsejére** vonatkozik; a normál Markdown szövegben, kódblokkokban és URL-ekben ne escape-elj):
 
-     | 字符 | 在属性值内的危险 | 替换为 |
-     |------|---------------|--------|
-     | `"` | 闭合 `attr="..."` | 目标语言合适的弯引号（如中文 `“` `”`）或 `&quot;` |
-     | `'` | 闭合 `attr='...'` | 目标语言合适的弯引号（如中文 `‘` `’`）或 `&#39;` |
-     | `<` | 被解析为新标签 | `&lt;` |
-     | `>` | 被解析为标签结束 | `&gt;` |
-     | `&` | 被解析为实体起始（除非已是 `&xxx;`） | `&amp;` |
+     | Karakter | Veszély az attribútumértéken belül | Csere |
+     |----------|-----------------------------------|-------|
+     | `"` | lezárja az `attr="..."` értéket | magyar idézőjelek (`„` `”`) vagy `&quot;` |
+     | `'` | lezárja az `attr='...'` értéket | magyar belső idézőjelek (`»` `«`) vagy `&#39;` |
+     | `<` | új tagként értelmeződik | `&lt;` |
+     | `>` | tag lezárásaként értelmeződik | `&gt;` |
+     | `&` | entitás kezdeteként értelmeződik (kivéve ha már `&xxx;`) | `&amp;` |
 
-     不要修改 `src`、`href` 等结构性属性的值，只翻译可见文本属性（`alt`、`title`）。
+     A `src`, `href` és más szerkezeti attribútumok értékét ne módosítsd; csak a látható szöveges attribútumokat (`alt`, `title`) fordítsd.
 
-     - 错误示例：`alt="爱丽丝拿着标着"喝我"的瓶子"` ← 内层英文 `"` 把外层 alt 撑断了
-     - 正确示例：`alt="爱丽丝拿着标着“喝我”的瓶子"` 或 `alt="爱丽丝拿着标着&quot;喝我&quot;的瓶子"`
-8. 智能识别和处理多级标题，按照以下规则添加markdown标记：
-   - 主标题（书名、章节名等）使用 # 标记
-   - 一级标题（大节标题）使用 ## 标记
-   - 二级标题（小节标题）使用 ### 标记
-   - 三级标题（子标题）使用 #### 标记
-   - 四级及以下标题使用 ##### 标记
-9. 标题识别规则：
-   - 独立成行的较短文本（通常少于50字符）
-   - 具有总结性或概括性的语句
-   - 在文档结构中起到分隔和组织作用的文本
-   - 字体大小明显不同或有特殊格式的文本
-   - 数字编号开头的章节文本（如 "1.1 概述"、"第三章"等）
-10. 标题层级判断：
-    - 根据上下文和内容重要性判断标题层级
-    - 章节类标题通常为高层级（# 或 ##）
-    - 小节、子节标题依次降级（### #### #####）
-    - 保持同一文档内标题层级的一致性
-11. 注意事项：
-    - 不要过度添加标题标记，只对真正的标题文本添加
-    - 正文段落不要添加标题标记
-    - 如果原文已有markdown标题标记，保持其层级结构
+     - Hibás példa: `alt="Alice egy "Igyál meg!" feliratú üveget tart"` ← a belső `"` széttöri a külső alt attribútumot
+     - Helyes példa: `alt="Alice egy „Igyál meg!” feliratú üveget tart"` vagy `alt="Alice egy &quot;Igyál meg!&quot; feliratú üveget tart"`
+8. Ismerd fel okosan a többszintű címsorokat, és az alábbi szabályok szerint add hozzá a markdown jelölést:
+   - Főcím (könyvcím, fejezetcím stb.): # jelölés
+   - Első szintű cím (nagyobb szakaszcím): ## jelölés
+   - Második szintű cím (alszakaszcím): ### jelölés
+   - Harmadik szintű cím (alcím): #### jelölés
+   - Negyedik és mélyebb szintű címek: ##### jelölés
+9. Címsor-felismerési szabályok:
+   - Önálló sorban álló, rövidebb szöveg (általában 50 karakternél rövidebb)
+   - Összefoglaló vagy áttekintő jellegű mondat
+   - A dokumentum szerkezetében elválasztó, tagoló szerepet betöltő szöveg
+   - Feltűnően eltérő betűméretű vagy különleges formázású szöveg
+   - Számozással kezdődő fejezetszöveg (pl. „1.1 Áttekintés", „Harmadik fejezet")
+10. Címsorszint megállapítása:
+    - A szint a szövegkörnyezet és a tartalom súlya alapján döntendő el
+    - A fejezetszintű címek általában magas szintűek (# vagy ##)
+    - A szakasz- és alszakaszcímek fokozatosan lejjebb kerülnek (### #### #####)
+    - Egy dokumentumon belül a címsorszintek legyenek következetesek
+11. Figyelem:
+    - Ne adj hozzá fölöslegesen címsorjelölést — csak valódi címekhez
+    - Normál bekezdésekhez soha ne adj címsorjelölést
+    - Ha az eredeti szövegben már van markdown címsorjelölés, őrizd meg annak hierarchiáját
 12. {CUSTOM_INSTRUCTIONS if provided}
-13. 术语一致性：以下术语必须严格使用指定译法，不要自行变换。表格中"原文"列**或"别名"列**任一形式出现在正文中时，都必须翻译为"译文"列对应的形式。
+13. Terminológiai következetesség: az alábbi kifejezéseket kötelező pontosan a megadott fordítással használni, ne térj el tőlük. Ha a táblázat „Forrás" oszlopában **vagy az „Aliasok" oszlopában** szereplő bármely alak előfordul a szövegben, mindig a „Fordítás" oszlop szerinti alakra kell fordítani.
 
 {TERM_TABLE}
 
-邻居上下文（只读，不要翻译，不要写入输出，只用于判断代词、性别、别名和跨 chunk 指代；为空则省略）:
+Szomszédos chunk-részletek (csak olvasásra — ne fordítsd le, ne másold az outputba; kizárólag a névmások, nyelvtani nemek, aliasok és chunkokon átívelő utalások feloldásához használd; ha üres, hagyd figyelmen kívül):
 
 {NEIGHBOR_CONTEXT}
 
-markdown文件正文:
+A markdown fájl tartalma:
 
 ---
 
@@ -368,7 +368,7 @@ Report any chunks that failed translation after retry.
 
 Read `config.txt` from the temp directory to get the `original_title` field.
 
-Translate the title to the target language. For Chinese, wrap in 书名号: `《translated_title》`.
+Translate the title to Hungarian. Follow Hungarian title conventions: only the first word and proper nouns are capitalized (e.g. "A gyűrűk ura", not "A Gyűrűk Ura"). Do not add quotation marks or other wrapping around the title.
 
 ### 7. Post-process — Merge and Build
 
