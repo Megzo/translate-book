@@ -118,7 +118,7 @@ python3 ../../scripts/merge_and_build.py --temp-dir standard-alice_temp --title 
 python3 scripts/convert.py /path/to/book.pdf
 ```
 
-A Calibre HTMLZ-be konvertálja a bemenetet, ami kicsomagolás után Markdownná alakul, majd ~6000 karakteres chunkokra darabolódik. A `manifest.json` minden forrás-chunk SHA-256 hash-ét rögzíti a későbbi validáláshoz. A célnyelv alapértelmezetten magyar (`--olang hu`).
+A Calibre HTMLZ-be konvertálja a bemenetet, ami kicsomagolás után Markdownná alakul, majd ~6000 karakteres chunkokra darabolódik. A `manifest.json` minden forrás-chunk SHA-256 hash-ét rögzíti a későbbi validáláshoz, a `source_fingerprint.json` pedig a temp-könyvtárat a pontos forrásbájtokhoz köti — ha lecserélt forrásfájllal futtatod újra, a szkript leáll ahelyett, hogy csendben a régi chunkokat használná. Az ujjlenyomat bevezetése előtt létrehozott temp-könyvtárakat az első újrafuttatáskor figyelmeztetéssel átveszi. A célnyelv alapértelmezetten magyar (`--olang hu`).
 
 Alapértelmezetten a munkakönyvtár a `{book_name}_temp/` az aktuális könyvtár alatt. A `--temp-root /path/to/work` kapcsolóval ugyanez a könyvtárnév egy másik szülő alá kerül.
 
@@ -155,7 +155,7 @@ Minden chunkot friss kontextusú subagent fordít, ezért egy 100 chunkos könyv
 
 A meglévő v1-es `glossary.json` fájlok az első betöltéskor automatikusan v2-re frissülnek. A v2 tiltja, hogy ugyanaz a felszíni alak (forrás vagy alias) két különböző kifejezéshez tartozzon; ha egy v1-es fájlban poliszém duplikált források vannak, a frissítés egyértelműsítést kérő üzenettel leáll — javítsd kézzel a fájlt, és töltsd be újra.
 
-Futtatások között a `glossary.json` szerkesztésével javíthatod a fordításokat; a meglévő `glossary.json` soha nem íródik felül — a nulláról építéshez töröld a fájlt. A `scripts/run_state.py` rögzíti, hogy az egyes chunkok mely glossary-kifejezéseket használták, így a későbbi glossary-változások csak az érintett chunkokat fordíttatják újra.
+Futtatások között a `glossary.json` szerkesztésével javíthatod a fordításokat; a meglévő `glossary.json` soha nem íródik felül — a nulláról építéshez töröld a fájlt. A `scripts/run_state.py` rögzíti, hogy az egyes chunkok mely glossary-kifejezéseket használták, így a későbbi glossary-változások (a `target`, `category` és `aliases` mezők szerkesztését is beleértve) az állapot rögzítése után csak az érintett chunkokat fordíttatják újra.
 
 ### 2. lépés: Fordítás (párhuzamos subagentek)
 
@@ -186,7 +186,7 @@ A `--cover` explicit képet ad át az EPUB Calibre-lépésnek. A `--export-name`
 Összefűzés előtt a szkript validálja, hogy:
 - Minden forrás-chunkhoz tartozik kimeneti fájl (1:1 megfeleltetés)
 - A forrás-chunkok hash-ei egyeznek a manifestben rögzítettekkel (nincs elavult kimenet)
-- Egyetlen kimeneti fájl sem üres
+- Egyetlen kimeneti fájl sem üres, csak whitespace-t tartalmazó vagy olvashatatlan — egy üres chunk leállítja az összefűzést, ahelyett hogy a tartalma csendben kimaradna
 
 Ezután: összefűzés → Pandoc HTML → tartalomjegyzék beszúrása → a Calibre legenerálja a DOCX, EPUB és PDF formátumokat.
 
@@ -217,6 +217,8 @@ Ezután: összefűzés → Pandoc HTML → tartalomjegyzék beszúrása → a Ca
 |----------|----------|
 | `Calibre ebook-convert not found` | Telepítsd a Calibre-t, és gondoskodj róla, hogy az `ebook-convert` a PATH-on legyen |
 | `Manifest validation failed` | A forrás-chunkok megváltoztak a darabolás óta — futtasd újra a `convert.py`-t |
+| `was created from different source bytes` | A temp-könyvtár egy másik forrásfájlhoz tartozik — töröld a temp-könyvtárat, vagy használj friss `--temp-root`-ot |
+| `Blank output` / `Empty output` | Egy subagent üres vagy csak whitespace-t tartalmazó chunkot írt — futtasd újra a skillt, és újrafordítja |
 | `Missing source chunk` | A forrásfájl törlődött — futtasd újra a `convert.py`-t |
 | Hiányos fordítás | Futtasd újra a skillt — onnan folytatja, ahol abbamaradt |
 | Cím/sablon/assetek változtak, de a kimenet nem frissült | Töröld a temp-könyvtárból a meglévő `output.md`, `book*.html`, `book.docx`, `book.epub`, `book.pdf` fájlokat, majd futtasd újra a `merge_and_build.py`-t |
