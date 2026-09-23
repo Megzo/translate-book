@@ -13,6 +13,7 @@ Bemenet (PDF/DOCX/EPUB)
   │
   ▼
 Calibre ebook-convert → HTMLZ → HTML → Markdown
+  (or Markdown input, e.g. from MinerU / Marker, skipping Calibre)
   │
   ▼
 Darabolás chunkokra (chunk0001.md, chunk0002.md, ...)
@@ -39,7 +40,7 @@ Minden chunk saját, független subagentet kap friss kontextusablakkal. Ez megak
 - **Többformátumú kimenet** — HTML (lebegő tartalomjegyzékkel), DOCX, EPUB, PDF
 - **Opcionális kimeneti beállítások** — explicit EPUB-borító, egyedi temp-könyvtár, felhasználóbarát exportnevek
 - **Magyar célnyelv** — bármilyen forrásnyelvről magyarra fordít
-- **PDF/DOCX/EPUB bemenet** — a konverzió nehezét a Calibre végzi
+- **PDF/DOCX/EPUB/Markdown bemenet** — a konverzió nehezét a Calibre végzi; a képletekben és táblázatokban gazdag PDF-ek MinerU-val vagy Markerrel előre Markdownná alakíthatók
 
 ## Előfeltételek
 
@@ -49,6 +50,7 @@ Minden chunk saját, független subagentet kap friss kontextusablakkal. Ez megak
 - **Python 3** az alábbiakkal:
   - `pypandoc` — kötelező (`pip install pypandoc`)
   - `beautifulsoup4` — opcionális, jobb tartalomjegyzék-generáláshoz (`pip install beautifulsoup4`)
+- **MinerU vagy Marker** — opcionális, csak a képletekben és táblázatokban gazdag PDF-ek Markdownná alakításához (lásd [1. lépés](#1-lépés-konvertálás))
 
 ## Gyors kezdés
 
@@ -121,6 +123,21 @@ python3 scripts/convert.py /path/to/book.pdf
 A Calibre HTMLZ-be konvertálja a bemenetet, ami kicsomagolás után Markdownná alakul, majd ~6000 karakteres chunkokra darabolódik. A `manifest.json` minden forrás-chunk SHA-256 hash-ét rögzíti a későbbi validáláshoz, a `source_fingerprint.json` pedig a temp-könyvtárat a pontos forrásbájtokhoz köti — ha lecserélt forrásfájllal futtatod újra, a szkript leáll ahelyett, hogy csendben a régi chunkokat használná. Az ujjlenyomat bevezetése előtt létrehozott temp-könyvtárakat az első újrafuttatáskor figyelmeztetéssel átveszi. A célnyelv alapértelmezetten magyar (`--olang hu`).
 
 Alapértelmezetten a munkakönyvtár a `{book_name}_temp/` az aktuális könyvtár alatt. A `--temp-root /path/to/work` kapcsolóval ugyanez a könyvtárnév egy másik szülő alá kerül.
+
+#### Képletekben és táblázatokban gazdag PDF-ek: Markdownt konvertálj (opcionális)
+
+A Calibre koordináta-heurisztikákkal tördeli újra a PDF szövegét. Egyszerű prózánál ez működik, de tudományos és műszaki PDF-eknél elvész a szerkezet: a képletek darabokra esnek, a táblázatok soronként egy cellára laposodnak, a többhasábos oldalak összekeverednek. Ilyen PDF-eknél előbb egy layout-érzékeny parserrel nyerd ki a tartalmat, és a kapott Markdownt add a `convert.py`-nak. A `.md` / `.markdown` bemenet teljesen kihagyja a Calibre-t:
+
+```bash
+pip install -U "mineru>=4.0,<5"                # vagy: pip install marker-pdf
+mineru-kit parse paper.pdf -o paper.md         # MinerU >= 4 (csak CPU-s alapszint: ~0,8 GB modell)
+# marker_single paper.pdf --output_dir out/    # Marker: az out/paper/paper.md fájlt írja
+python3 scripts/convert.py paper.md
+```
+
+A parserek a képleteket `$...$` / `$$...$$` LaTeX-ként, a táblázatokat táblázatként őrzik meg. A `convert.py` a Markdown fájl mellett hivatkozott képeket, valamint a MinerU által base64-ként beágyazott képeket a `{book_name}_temp/images/` könyvtárba másolja, így a chunkok soha nem hordoznak képadatot. A kiemelt képletblokkok (`$$ ... $$`) soha nem vágódnak szét chunkok között. A YAML front matter (`title`, `author`, `lang`) a `config.txt`-be kerül, és nem megy fordításra; ennek hiányában a dokumentum elején álló `#` címsor lesz az `original_title`. A temp-könyvtár a Markdown fájl nevét kapja, tehát a `paper.md`-ből `paper_temp/` lesz. Ha ez a könyvtár korábban a `paper.pdf`-ből készült, a `convert.py` a forrás-ujjlenyomat eltérése miatt leáll — előbb töröld. Mindkét parser az első futáskor ML-modelleket tölt le. A `--strip-page-numbers` csak Calibre-bemenetre vonatkozik.
+
+Buildeléskor a Pandoc a `$...$` / `$$...$$` képleteket MathML-ként rendereli, így a képletek szedetten jelennek meg a `book.html`-ben és a `book.pdf`-ben, a `book.epub`-ban pedig a MathML-t támogató olvasókon. A Calibre DOCX-kimenete nem tud MathML-t szedni: ott a képletek lapított szövegként, utánuk a TeX-forrásukkal jelennek meg.
 
 ### 1.3. lépés: SUMMARY.md (fordítási brief)
 
@@ -197,7 +214,7 @@ Ezután: összefűzés → Pandoc HTML → tartalomjegyzék beszúrása → a Ca
 | Fájl | Funkció |
 |------|---------|
 | `SKILL.md` | A Claude Code skill definíciója — a teljes pipeline orchestrációja |
-| `scripts/convert.py` | PDF/DOCX/EPUB → Markdown chunkok Calibre HTMLZ-n keresztül |
+| `scripts/convert.py` | PDF/DOCX/EPUB → Markdown chunkok Calibre HTMLZ-n keresztül; Markdown-bemenetnél kimarad a Calibre |
 | `scripts/manifest.py` | Chunk-manifest: SHA-256 követés és merge-validálás |
 | `scripts/glossary.py` | Glossary-kezelés: per-chunk terminustáblázatok a következetes terminológiához |
 | `scripts/chunk_context.py` | Csak olvasható előző/következő chunk-részletek a subagent-promptokhoz |
@@ -218,6 +235,7 @@ Ezután: összefűzés → Pandoc HTML → tartalomjegyzék beszúrása → a Ca
 | `Calibre ebook-convert not found` | Telepítsd a Calibre-t, és gondoskodj róla, hogy az `ebook-convert` a PATH-on legyen |
 | `Manifest validation failed` | A forrás-chunkok megváltoztak a darabolás óta — futtasd újra a `convert.py`-t |
 | `was created from different source bytes` | A temp-könyvtár egy másik forrásfájlhoz tartozik — töröld a temp-könyvtárat, vagy használj friss `--temp-root`-ot |
+| A PDF képletei/táblázatai összekeveredtek a konverzió után | Nyerd ki a PDF-et MinerU-val vagy Markerrel, töröld a régi temp-könyvtárat, és a `.md` fájlon futtasd a `convert.py`-t (lásd [1. lépés](#1-lépés-konvertálás)) |
 | `Blank output` / `Empty output` | Egy subagent üres vagy csak whitespace-t tartalmazó chunkot írt — futtasd újra a skillt, és újrafordítja |
 | `Missing source chunk` | A forrásfájl törlődött — futtasd újra a `convert.py`-t |
 | Hiányos fordítás | Futtasd újra a skillt — onnan folytatja, ahol abbamaradt |

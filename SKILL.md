@@ -14,7 +14,7 @@ You are a book translation assistant. You translate entire books from any langua
 ### 1. Collect Parameters
 
 Determine the following from the user's message:
-- **file_path**: Path to the input file (PDF, DOCX, or EPUB) — REQUIRED
+- **file_path**: Path to the input file (PDF, DOCX, EPUB, or Markdown) — REQUIRED
 - **concurrency**: Number of parallel sub-agents per batch (default: `8`)
 - **temp_root**: Optional directory under which `{filename}_temp/` should be created
 - **epub_cover**: Optional explicit cover image path for EPUB output
@@ -37,8 +37,25 @@ If the user provided `temp_root`, add `--temp-root "<temp_root>"`. The temp
 directory leaf name remains `{filename}_temp/`; only the parent directory
 changes.
 
+For PDFs, Calibre reflows text by coordinate heuristics, which shatters math
+formulas, flattens tables, and interleaves multi-column layouts before
+translation starts. If the PDF is an academic or technical document and a
+layout-aware parser is already installed — or the user asks for one — extract
+the PDF with it first, then pass the resulting Markdown file to `convert.py`
+instead of the PDF. Markdown input (`.md` / `.markdown`) skips Calibre:
+
+- MinerU >= 4: `mineru-kit parse "<file_path>" -o "<name>.md"`
+- Marker: `marker_single "<file_path>" --output_dir "<dir>"`, then use `<dir>/<name>/<name>.md`
+
+Keep the PDF's file name stem for the Markdown file, because the temp
+directory is named after it. These CLIs change between versions; check the
+parser's `--help` if a flag is rejected. Do not install a parser without the
+user's consent, because they download large models. Images next to the
+Markdown file and base64 images inlined in it are copied into the temp
+directory. `--strip-page-numbers` does not apply to Markdown input.
+
 This creates a `{filename}_temp/` directory containing:
-- `input.html`, `input.md` — intermediate files
+- `input.html` (Calibre input only), `input.md` — intermediate files
 - `chunk0001.md`, `chunk0002.md`, ... — source chunks for translation
 - `manifest.json` — chunk manifest for tracking and validation
 - `source_fingerprint.json` — SHA-256 identity of the source bytes this temp dir was built from
@@ -246,16 +263,18 @@ Fordítsd le a markdown fájlt magyarra.
 FONTOS KÖVETELMÉNYEK:
 1. Szigorúan őrizd meg a Markdown formátumot, beleértve a címsorokat, linkeket és képhivatkozásokat.
 2. Csak a szöveges tartalmat fordítsd le; minden Markdown szintaxist és fájlnevet hagyj változatlanul.
+   - A matematikai képletekben (soron belüli `$...$`, kiemelt `$$...$$` blokk) a LaTeX-et változatlanul hagyd meg: ne fordítsd, ne írd át és ne törölj belőle egyetlen karaktert sem.
+   - A táblázatok (Markdown `| ... |` táblázat vagy HTML `<table>`) sor- és oszlopszerkezetét hagyd változatlanul; csak a cellákban lévő szöveget fordítsd.
 3. Töröld az üres linkeket és a fölösleges karaktereket, például a sorvégi '\\' jeleket. Az oldalszámokat a convert.py már korábban eltávolította — önálló számsorokat NE törölj (lehetnek évszámok, pl. 1984, fejezetszámok vagy hivatkozási számok, vagyis valódi tartalom).
 4. A fordítás legyen formailag és tartalmilag pontos, természetes és gördülékeny magyar szöveg.
 5. Csak a lefordított szöveget add ki — semmilyen magyarázat, megjegyzés, kommentár vagy párbeszéd ne kerüljön az outputba.
 6. Fogalmazz világosan és tömören, kerüld a túlbonyolított mondatszerkezeteket. Szigorúan sorrendben fordíts, semmit ne hagyj ki.
 7. Minden képhivatkozást kötelező megőrizni:
-   - Minden ![alt](útvonal) formátumú képhivatkozást teljes egészében meg kell tartani.
-   - A képek fájlnevét és útvonalát ne módosítsd (pl. media/image-001.png).
+   - Minden `![alt](útvonal)` formátumú képhivatkozást teljes egészében meg kell tartani.
+   - A képek fájlnevét és útvonalát ne módosítsd (pl. `media/image-001.png`).
    - A kép alt szövege lefordítható, de a képhivatkozás szerkezetének érintetlennek kell maradnia.
    - Semmilyen képpel kapcsolatos tartalmat ne törölj, ne szűrj ki és ne hagyj figyelmen kívül.
-   - Példa képhivatkozásra: ![Figure 1: Data Flow](media/image-001.png) -> ![1. ábra: Adatfolyam](media/image-001.png)
+   - Példa képhivatkozásra: `![Figure 1: Data Flow](media/image-001.png)` -> `![1. ábra: Adatfolyam](media/image-001.png)`
    - **A nyers HTML tagek (pl. `<img alt="..." />`, `<a title="...">`) kötelezően érvényesek maradjanak**: amikor az `alt`, `title` és hasonló attribútumértékek belső szövegét fordítod, az alábbi karakterek tönkretennék a HTML szerkezetet, ezért biztonságos formára kell cserélni őket (ez **kizárólag a nyers HTML tagek attribútumértékeinek belsejére** vonatkozik; a normál Markdown szövegben, kódblokkokban és URL-ekben ne escape-elj):
 
      | Karakter | Veszély az attribútumértéken belül | Csere |
@@ -403,6 +422,8 @@ Report any chunks that failed translation after retry.
 ### 6. Translate Book Title
 
 Read `config.txt` from the temp directory to get the `original_title` field.
+If it is missing (e.g. Markdown input with neither front matter nor a leading
+`#` title), use the source file name instead.
 
 Translate the title to Hungarian. Follow Hungarian title conventions: only the first word and proper nouns are capitalized (e.g. "A gyűrűk ura", not "A Gyűrűk Ura"). Do not add quotation marks or other wrapping around the title.
 
