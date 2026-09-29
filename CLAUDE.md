@@ -18,9 +18,26 @@ translate-book is a Claude Code Skill that translates books (PDF/DOCX/EPUB) from
 - `scripts/calibre_html_publish.py` — Calibre format conversion wrapper
 - `scripts/template.html`, `scripts/template_ebook.html` — HTML templates
 
+## Prerequisites
+
+- **Python 3.12+** — the version CI runs.
+- **Unit tests need nothing else.** Every third-party import in `scripts/` is guarded
+  (`try/except ImportError` or function-local), so the suite runs on a bare stdlib.
+- **The full pipeline additionally needs** Calibre (`ebook-convert`) and Pandoc binaries,
+  plus the `pypandoc`, `beautifulsoup4`, and `markdown` packages. Missing pieces degrade
+  individual output formats rather than failing the run.
+- **MinerU or Marker** — optional, only to pre-extract formula- and table-heavy PDFs to Markdown input.
+
 ## Testing changes
 
-Test with a small PDF to verify the full pipeline:
+Unit tests (what CI runs — fast, no setup):
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+python3 -m compileall scripts tests
+```
+
+Then test with a small PDF to verify the full pipeline:
 
 ```bash
 python3 scripts/convert.py /path/to/small.pdf
@@ -37,6 +54,7 @@ Verify: all output_chunk*.md files exist, manifest validation passes, output for
 - SKILL.md frontmatter must stay single-line per field (OpenClaw parser requirement)
 - Script paths in SKILL.md use `{baseDir}` not hardcoded paths
 - Subagent instructions in SKILL.md must be platform-neutral (work on Claude Code, OpenClaw, Codex)
+- Checked-in baseline inputs live under `tests/baselines/<book-id>/`; generated full-pipeline outputs live under `tests/.artifacts/`
 - README.md is the only README (Hungarian); README.zh-CN.md was intentionally removed
 - The glossary term-table header emitted by `scripts/glossary.py` (`Forrás | Aliasok | Fordítás`) must stay in sync with the wording referenced in SKILL.md rule #13
 - `SUMMARY.md` (per-temp-dir Hungarian translation brief, SKILL.md step 3.3) is advisory context only: skip-if-exists, hand-editable, intentionally NOT tracked by `run_state.py` — editing it must never trigger re-translation
